@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>月曜日粉砕アプリ・改</title>
+    
+    <!-- OGP Tags for Social Sharing -->
+    <meta property="og:title" content="月曜日粉砕アプリ・改">
+    <meta property="og:description" content="さぁ、その手で忌まわしき月曜日を破壊し、輝かしい週末を取り戻すのだ！">
+    <meta property="og:image" content="https://i.imgur.com/HgsoHdN.png">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --bg-color: #0d0d0d;
+            --text-color: #e0e0e0;
+            --accent-color: #ff005d;
+            --weekend-color-1: #ffdd00;
+            --weekend-color-2: #00bfff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            -webkit-user-select: none;
+            user-select: none;
+            transition: background 0.5s ease;
+        }
+        
+        body.happy-mode {
+            background: linear-gradient(-45deg, #00bfff, #ffde00);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            perspective: 1000px;
+        }
+
+        #day-display {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #day-text, #weekend-text {
+            font-size: clamp(8rem, 30vw, 20rem);
+            font-weight: 900;
+            margin: 0;
+            text-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+            position: absolute;
+            transition: color 0.3s;
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        body.happy-mode #day-text {
+             text-shadow: none;
+        }
+
+        #weekend-text {
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.5);
+        }
+
+        #weekend-text .saturday {
+             text-shadow: 0 0 15px var(--weekend-color-2), 0 0 25px var(--weekend-color-2);
+             color: var(--weekend-color-2);
+        }
+
+        #weekend-text .sunday {
+             text-shadow: 0 0 15px var(--weekend-color-1), 0 0 25px var(--weekend-color-1);
+             color: var(--weekend-color-1);
+        }
+
+        #crush-button {
+            margin-top: 40px;
+            padding: 20px 40px;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--bg-color);
+            background: var(--accent-color);
+            border: 3px solid var(--accent-color);
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--accent-color), 0 0 35px var(--accent-color) inset;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            z-index: 5;
+        }
+        #crush-button:hover { transform: scale(1.05); }
+        #crush-button:active { transform: scale(0.95); }
+
+        #victory-message {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            color: white;
+            opacity: 0;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            position: absolute;
+            top: 15%;
+            text-align: center;
+            z-index: 10;
+        }
+
+        #post-crush-controls {
+            position: absolute;
+            bottom: 15%;
+            display: flex;
+            gap: 20px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #post-crush-controls.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .control-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: 2px solid;
+            background: rgba(0,0,0,0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        #tweet-button { border-color: #1DA1F2; }
+        #tweet-button:hover { background: #1DA1F2; color: white; }
+        #reset-button { border-color: var(--text-color); }
+        #reset-button:hover { background: var(--text-color); color: var(--bg-color); }
+
+        #cats-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .cat { position: absolute; font-size: 3rem; will-change: transform; }
+        
+        #kagekin-container {
+            position: fixed;
+            bottom: -250px;
+            right: 20px;
+            width: 200px;
+            z-index: 20;
+        }
+        #kagekin-img { width: 150px; height: 150px; border-radius: 50%; border: 4px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-color); }
+        #kagekin-bubble {
+            position: absolute; bottom: 160px; left: -50px;
+            background: white; color: black; padding: 10px 15px; border-radius: 15px;
+            font-size: 14px; width: 200px; text-align: center; opacity: 0; transform: scale(0);
+        }
+        #kagekin-bubble::after {
+            content: ''; position: absolute; bottom: -10px; right: 40px;
+            width: 0; height: 0; border-left: 10px solid transparent;
+            border-right: 10px solid transparent; border-top: 15px solid white;
+        }
+        
+        #credit {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #000;
+            border-top: 2px solid #2a2a2a;
+            padding: 8px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            font-family: 'Share Tech Mono', 'Courier New', Courier, monospace;
+            font-size: 16px;
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41, 0 0 8px rgba(0, 255, 65, 0.5);
+            z-index: 30;
+        }
+        .credit-link {
+             color: #00ff41; text-decoration: none; transition: all 0.2s;
+        }
+        .credit-link:hover {
+            color: #8affab; text-shadow: 0 0 10px #8affab;
+        }
+        .social-links { display: flex; gap: 15px; }
+        .social-links a { color: #00ff41; text-decoration: none; transition: all 0.2s; }
+        .social-links a:hover { color: #8affab; transform: scale(1.1); }
+        .social-links svg { width: 24px; height: 24px; fill: currentColor; }
+        
+        #gadget-info {
+            position: fixed;
+            bottom: 50px;
+            left: 30px;
+            cursor: pointer;
+            z-index: 25;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #gadget-icon {
+            font-size: 120px;
+            text-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+        }
+        #gadget-text-bubble {
+            position: absolute;
+            bottom: 125px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            color: #1a1a1a;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        #gadget-text-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-top: 7px solid rgba(255, 255, 255, 0.95);
+        }
+        
+        #gadget-modal {
+            background: rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
+        }
+        #modal-content {
+            background: #1a1a1a; color: var(--text-color);
+            padding: 30px; border-radius: 15px;
+            width: 90%; max-width: 600px;
+            max-height: 90vh; overflow-y: auto;
+            position: relative;
+            border: 2px solid var(--accent-color);
+            box-shadow: 0 0 20px var(--accent-color);
+        }
+        #modal-close-btn {
+            position: absolute; top: 10px; right: 15px;
+            font-size: 2.5rem; color: #888;
+            background: none; border: none; cursor: pointer; transition: color 0.2s;
+        }
+        #modal-close-btn:hover { color: white; }
+        #modal-content h3 { text-align: center; color: var(--accent-color); font-size: 1.8rem; margin-top: 0;}
+        #modal-content img { display: block; margin: 15px auto; width: 100px; height: 100px; border-radius: 50%; }
+        #modal-content p { line-height: 1.8; }
+        .warning {
+            margin-top: 25px; padding: 15px;
+            border: 1px dashed #ffc107; border-radius: 8px;
+            background: rgba(255, 193, 7, 0.1);
+        }
+        .warning h4 { margin: 0 0 10px 0; color: #ffc107; text-align: center; }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 50; opacity: 0;
+        }
+        .overlay.visible { opacity: 1; pointer-events: auto; }
+        #cutin-container {
+            display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.7);
+        }
+        #cutin-img { max-width: 90%; max-height: 90%; transform: scale(3); opacity: 0; }
+        #glitch-overlay { z-index: 40; }
+        #glitch-overlay::before, #glitch-overlay::after {
+            content: '月'; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: clamp(8rem, 30vw, 20rem);
+            font-weight: 900; color: var(--text-color); background: var(--bg-color);
+            overflow: hidden; clip-path: inset(50% 0 50% 0);
+        }
+        #glitch-overlay::before { left: calc(50% - 2px); text-shadow: -2px 0 #00ffff; }
+        #glitch-overlay::after { left: calc(50% + 2px); text-shadow: 2px 0 #ff00ff; }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            #kagekin-container {
+                transform: scale(0.9);
+                transform-origin: bottom right;
+                right: 5px;
+            }
+            #credit {
+                font-size: 14px;
+            }
+            #gadget-info {
+                transform: scale(0.9);
+                transform-origin: bottom left;
+                left: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #day-text, #weekend-text {
+                font-size: clamp(4rem, 25vw, 10rem);
+            }
+            #crush-button {
+                padding: 15px 30px;
+                font-size: 1.2rem;
+            }
+            #post-crush-controls {
+                flex-direction: column;
+                gap: 15px;
+                bottom: 120px;
+            }
+            #kagekin-container {
+                transform: scale(0.8);
+                transform-origin: bottom right;
+                bottom: -250px;
+            }
+            #gadget-info {
+                transform: scale(0.7);
+                transform-origin: bottom left;
+                bottom: 45px;
+                left: 5px;
+            }
+            #credit {
+                flex-direction: column;
+                font-size: 12px;
+                gap: 5px;
+                padding: 5px 0;
+            }
+            #credit .social-links {
+                gap: 12px;
+            }
+            #credit .social-links svg {
+                width: 22px;
+                height: 22px;
+            }
+            #victory-message {
+                font-size: clamp(1.2rem, 4vw, 2rem);
+                width: 90%;
+            }
+            #modal-content {
+                padding: 20px;
+            }
+            #modal-content h3 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="day-display">
+            <h1 id="day-text">月</h1>
+            <div id="weekend-text">
+                <span class="saturday">土</span><span class="sunday">日</span>
+            </div>
+        </div>
+        
+        <h2 id="victory-message"></h2>
+
+        <button id="crush-button">月曜日を粉砕する</button>
+        
+        <div id="post-crush-controls">
+            <button id="tweet-button" class="control-button">Xで共有</button>
+            <button id="reset-button" class="control-button">やはり月曜日と向き合う</button>
+        </div>
+    </div>
+    
+    <div id="cats-container"></div>
+    
+    <div id="kagekin-container">
+        <p id="kagekin-bubble"></p>
+        <img id="kagekin-img" src="https://pbs.twimg.com/profile_images/1905651963158835200/M06q-esr_400x400.jpg" onerror="this.style.display='none'" alt="[カゲキン博士の画像]">
+    </div>
+
+    <div id="credit">
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <span>制作: カゲキン博士 with Gemini</span>
+            <div class="social-links">
+                <a href="https://x.com/kgkn42" target="_blank" title="X (Twitter)">
+                    <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
+                </a>
+                <a href="https://www.youtube.com/@kagekinTV" target="_blank" title="YouTube">
+                    <svg viewBox="0 0 24 24"><path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.254,4,12,4,12,4S5.746,4,4.186,4.418 c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.746,2,12,2,12s0,4.254,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768 C5.746,20,12,20,12,20s6.254,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.254,22,12,22,12S22,7.746,21.582,6.186z M10,15.464V8.536L16,12L10,15.464z"></path></svg>
+                </a>
+            </div>
+        </div>
+        <a href="https://www.youtube.com/playlist?list=PLG7zALhMHFHEJeYD1IBxviwJHO0ReEsod" class="credit-link" target="_blank">他の発明品: バーチャルひみつガシェット大全</a>
+    </div>
+    
+    <div id="gadget-info">
+        <div id="gadget-text-bubble">バーチャルひみつガシェット<br>No.0023 月曜日破壊ナイザー</div>
+        <div id="gadget-icon">💾</div>
+    </div>
+
+    <div id="gadget-modal" class="overlay">
+        <div id="modal-content">
+            <button id="modal-close-btn">&times;</button>
+            <h3>カゲキン博士からのメッセージ</h3>
+            <img src="https://pbs.twimg.com/profile_images/1905651963158835200/M06q-esr_400x400.jpg" onerror="this.style.display='none'" alt="[カゲキン博士の画像]">
+            <p>月曜日が嫌いかね？ならば…月曜日という概念そのものを破壊してしまえばいいのだ！</p>
+            <p>ミーの発明した<strong>「月曜日破壊ナイザー」</strong>は、対象世界の因果律に干渉し、観測可能な平日から"月曜日"という事象を抹消する。結果、セカイは最初から土日しか存在しなかったかのように再構成されるのだ！ ふははは！</p>
+            <div class="warning">
+                <h4>⚠️ 警告 ⚠️</h4>
+                <p>本装置の使用は、時空連続体に予測不可能なパラドックスを引き起こす可能性があります。例えば、「サザエさん症候群」の消失、週休5日制の強制導入による世界経済の崩壊、"月曜断食"の成立不可などです。すべての責任は使用者に帰属します。それでも君は、この禁断のスイッチを押すかね…？</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="cutin-container" class="overlay">
+        <img id="cutin-img" src="https://i.imgur.com/HgsoHdN.png" onerror="this.style.display='none'" alt="破壊執行カットイン">
+    </div>
+    <div id="glitch-overlay" class="overlay"></div>
+
+    <script>
+        const crushButton = document.getElementById('crush-button');
+        const dayText = document.getElementById('day-text');
+        const weekendText = document.getElementById('weekend-text');
+        const victoryMessage = document.getElementById('victory-message');
+        const postCrushControls = document.getElementById('post-crush-controls');
+        const tweetButton = document.getElementById('tweet-button');
+        const resetButton = document.getElementById('reset-button');
+        const catsContainer = document.getElementById('cats-container');
+        const kagekinContainer = document.getElementById('kagekin-container');
+        const kagekinBubble = document.getElementById('kagekin-bubble');
+        const cutinContainer = document.getElementById('cutin-container');
+        const cutinImg = document.getElementById('cutin-img');
+        const glitchOverlay = document.getElementById('glitch-overlay');
+        const gadgetInfo = document.getElementById('gadget-info');
+        const gadgetModal = document.getElementById('gadget-modal');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const body = document.body;
+        const container = document.querySelector('.container');
+
+        let soundsReady = false;
+        let fanfare, destructionSFX;
+
+        function setupSounds() {
+            if (soundsReady) return;
+            fanfare = () => { const synth = new Tone.PolySynth(Tone.Synth).toDestination(); synth.volume.value = -12; const now = Tone.now(); synth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now); synth.triggerAttackRelease(["G4", "B4", "D5"], "8n", now + 0.2); synth.triggerAttackRelease(["C5", "E5", "G5"], "4n", now + 0.4); };
+            destructionSFX = () => { const now = Tone.now(); const noise = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 1.5, sustain: 0 } }).toDestination(); noise.triggerAttackRelease("1n", now); noise.volume.value = -10; const rumble = new Tone.MembraneSynth({ pitchDecay: 0.2, octaves: 2, envelope: { attack: 0.1, decay: 0.8, sustain: 0.1, release: 1 } }).toDestination(); rumble.triggerAttackRelease("C1", "1n", now); const shatter = new Tone.PluckSynth().toDestination(); shatter.volume.value = -5; const shatterTimes = []; for (let i = 0; i < 15; i++) { shatterTimes.push(Math.random() * 0.4); } shatterTimes.sort(); shatterTimes.forEach(timeOffset => { shatter.triggerAttack(Tone.Midi(Math.random() * 48 + 48).toFrequency(), now + timeOffset); }); };
+            soundsReady = true;
+        }
+
+        const destructionPatterns = [ { name: "猫爆弾", emoji: "💣" }, { name: "太陽拳", emoji: "☀️" }, { name: "隕石落とし", emoji: "☄️" }, { name: "拳で", emoji: "👊" }, { name: "黒穴", emoji: "⚫" }, { name: "雷撃", emoji: "⚡" }, { name: "ミサイル", emoji: "🚀" }, { name: "ドラゴンブレス", emoji: "🔥" }, { name: "ドリル", emoji: "🌀" }, { name: "最終兵器", emoji: "☢️" }, { name: "愛", emoji: "❤️" }, { name: "ねこぱんち", emoji: "🐾" } ];
+        const victoryPhrases = [ "やったー！ 月曜日を破壊したぞ！", "さらば月曜日！ミーたちの戦いは終わらない！", "月曜日の残骸から、最高の週末が生まれた！", "粉砕完了！今週も平和だ。", "これが...週末の力...！", "また一つ、月曜日を葬ってしまった…", "週末奪還！全軍、休日に備えよ！", "月曜日は消えた。いいね？", "ミッションコンプリート！週末を確保した。", "カオスな週末の始まりだ！", "ふぅ…危ないところだったぜ。", "これで心置きなく二度寝できる！" ];
+        const postCrushKagekinPhrases = [ "月曜日？ 破壊したはずでは…？", "ほう…また月曜日かね？何度でも破壊してくれるわ！", "君の週末はミーが保証しよう。", "ふははは！この程度の破壊、造作もない！", "月曜日のない世界…素晴らしいとは思わんかね？", "おっと、破片が飛んだか。大丈夫かね？", "またミーを呼んだかね？任せたまえ！", "週末は好きかね？ミーは大好きだ！", "さあ、祝杯をあげようじゃないか！", "次の月曜日も、このミーに任せるがいい！", "この破壊の先にしか、真の安息はないのだよ。", "ミーの実験はまだ始まったばかりだ…" ];
+        const initialKagekinPhrases = [ "さぁ、今すぐ月曜日を破壊しよう！", "君のその手で、週末を取り戻すのだ！", "迷うことはない。そのボタンが運命だ。", "月曜日などという概念は、しょせん幻想にすぎんよ。", "ふはは…ミーに任せれば安心だ！", "ボタンを押すかね？押さないのかね？どっちなんだい！", "悩んでいる時間も月曜日の一部だぞ！" ];
+        let currentVictoryPhrase = "";
+
+        function getRandomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+        function showInitialKagekin() {
+            kagekinBubble.innerText = getRandomItem(initialKagekinPhrases);
+            const kagekinBottom = window.innerWidth <= 480 ? 60 : 60;
+            gsap.to(kagekinContainer, { bottom: kagekinBottom, duration: 0.5, ease: 'back.out(2)', delay: 0.5 });
+            gsap.to(kagekinBubble, { scale: 1, autoAlpha: 1, ease: 'back.out', delay: 0.7 });
+        }
+
+        async function crushMonday() {
+            if (!soundsReady) { await Tone.start(); setupSounds(); }
+            crushButton.disabled = true;
+            gsap.to(crushButton, { autoAlpha: 0, duration: 0.3 });
+            gsap.to([kagekinContainer, kagekinBubble], { autoAlpha: 0, duration: 0.3 });
+
+            const pattern = getRandomItem(destructionPatterns);
+            currentVictoryPhrase = getRandomItem(victoryPhrases);
+            const tl = gsap.timeline({ onComplete: showPostCrushUI });
+
+            tl.set(cutinImg, { scale: 3, autoAlpha: 0 }) 
+              .to(cutinContainer, { autoAlpha: 1, duration: 0.1, onStart: () => cutinContainer.classList.add('visible') })
+              .to(cutinImg, { scale: 1, autoAlpha: 1, duration: 0.4, ease: 'back.out' })
+              .to(cutinImg, { scale: 1.2, duration: 2, ease: 'power1.inOut' }, "<")
+              .to(cutinImg, { autoAlpha: 0, duration: 0.2 }, ">-0.2")
+              .to(cutinContainer, { autoAlpha: 0, duration: 0.3, onComplete: () => cutinContainer.classList.remove('visible') });
+
+            tl.add(() => {
+                glitchOverlay.classList.add('visible');
+                gsap.to(glitchOverlay.style, { duration: 0.05, clipPath: () => `inset(${Math.random()*100}% 0 ${Math.random()*100}% 0)`, repeat: 20, ease: "steps(1)" });
+            }, "-=0.5");
+            
+            const projectile = document.createElement('div');
+            projectile.innerText = pattern.emoji;
+            projectile.style.cssText = 'position: absolute; font-size: 5rem; z-index: 100; pointer-events: none;';
+            container.appendChild(projectile);
+            tl.from(projectile, { x: -200, y: -200, rotation: -360, duration: 0.5, ease: 'power2.in' }).to(projectile, { display: 'none', onComplete: () => projectile.remove() });
+            tl.add(() => {
+                destructionSFX();
+                body.style.background = '#fff';
+                setTimeout(() => {
+                    body.style.background = '';
+                    body.classList.add('happy-mode');
+                }, 100);
+                gsap.to(dayText, { scale: 3, opacity: 0, duration: 0.2, ease: 'expo.in' });
+                glitchOverlay.classList.remove('visible');
+                spawnCats();
+            }, ">-0.1");
+
+            tl.to(weekendText, { autoAlpha: 1, scale: 1, duration: 1, ease: 'elastic.out(1, 0.5)', onStart: fanfare }, ">+1.0");
+        }
+
+        function spawnCats() {
+            catsContainer.innerHTML = '';
+            const catCount = 50 + Math.random() * 30;
+            for (let i = 0; i < catCount; i++) {
+                const cat = document.createElement('span');
+                cat.className = 'cat';
+                cat.innerText = getRandomItem(['🐈', '😹', '😻', '😼', '🙀', '💥']);
+                catsContainer.appendChild(cat);
+                gsap.fromTo(cat, { x: window.innerWidth / 2, y: window.innerHeight / 2, scale: Math.random() * 1 + 0.5, }, 
+                { x: `random(-100, ${window.innerWidth + 100})`, y: `random(-100, ${window.innerHeight + 100})`, rotation: 'random(-720, 720)', opacity: 0, duration: Math.random() * 2 + 1.5, ease: 'power3.out', onComplete: () => cat.remove() });
+            }
+        }
+        
+        function showPostCrushUI() {
+            victoryMessage.innerText = currentVictoryPhrase;
+            kagekinBubble.innerText = getRandomItem(postCrushKagekinPhrases);
+            postCrushControls.classList.add('visible');
+            const kagekinBottom = window.innerWidth <= 480 ? 60 : 60;
+            const tl = gsap.timeline();
+            tl.to(victoryMessage, { autoAlpha: 1, y: -20, duration: 0.5 })
+              .to(postCrushControls, { autoAlpha: 1, duration: 0.5 }, "-=0.2")
+              .to(kagekinContainer, { bottom: kagekinBottom, autoAlpha: 1, duration: 0.5, ease: 'back.out(2)' }, "-=0.5")
+              .to(kagekinBubble, { scale: 1, autoAlpha: 1, ease: 'back.out' });
+        }
+        
+        function resetApp() {
+            body.classList.remove('happy-mode');
+            postCrushControls.classList.remove('visible');
+            
+            gsap.killTweensOf([victoryMessage, postCrushControls, kagekinContainer, kagekinBubble, weekendText, dayText, crushButton]);
+            
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    crushButton.disabled = false;
+                    showInitialKagekin();
+                }
+            });
+
+            tl.to([victoryMessage, postCrushControls, kagekinBubble, kagekinContainer], {
+                autoAlpha: 0,
+                duration: 0.5
+            });
+            
+            tl.to(weekendText, {
+                autoAlpha: 0,
+                scale: 0.5,
+                duration: 0.5
+            }, 0);
+
+            tl.set(kagekinContainer, { bottom: -250 });
+            tl.set(cutinImg, { scale: 3, autoAlpha: 0 }); 
+
+            tl.to(dayText, {
+                scale: 1,
+                autoAlpha: 1,
+                duration: 0.5
+            });
+            
+            tl.to(crushButton, {
+                autoAlpha: 1,
+                duration: 0.5
+            }, "<");
+        }
+
+        crushButton.addEventListener('click', crushMonday);
+        resetButton.addEventListener('click', resetApp);
+        tweetButton.addEventListener('click', () => { 
+            const tweetTitle = "【月曜日破壊🌕️アプリ】";
+            const tweetBody = `「${currentVictoryPhrase}」💥🎉\n\nあなたも月曜日を破壊する権利があります。\n\n`;
+            const hashtags = "#月曜日破壊ナイザー #バーチャルひみつガジェット #Gemini";
+            const fullText = `${tweetTitle}\n${tweetBody}${hashtags}`;
+            const encodedText = encodeURIComponent(fullText);
+            window.open(`https://twitter.com/intent/tweet?text=${encodedText}`);
+        });
+        gadgetInfo.addEventListener('click', () => { gadgetModal.classList.add('visible'); gsap.fromTo(gadgetModal, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }); });
+        modalCloseBtn.addEventListener('click', () => { gsap.to(gadgetModal, { autoAlpha: 0, duration: 0.3, onComplete: () => gadgetModal.classList.remove('visible') }); });
+        gadgetModal.addEventListener('click', (e) => { if (e.target === gadgetModal) { gsap.to(gadgetModal, { autoAlpha: 0, duration: 0.3, onComplete: () => gadgetModal.classList.remove('visible') }); } });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+             const startAudio = async () => { await Tone.start(); setupSounds(); document.body.removeEventListener('click', startAudio); document.body.removeEventListener('touchend', startAudio); };
+             document.body.addEventListener('click', startAudio);
+             document.body.addEventListener('touchend', startAudio);
+             showInitialKagekin();
+        });
+    </script>
+</body>
+</html>
