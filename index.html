@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>月曜日粉砕アプリ・改</title>
+    <title>月曜日粉砕アプリ-MONDAY SMASH</title>
     
     <!-- OGP Tags for Social Sharing -->
-    <meta property="og:title" content="月曜日粉砕アプリ・改">
+    <meta property="og:title" content="月曜日粉砕アプリ-MONDAY SMASH">
     <meta property="og:description" content="さぁ、その手で忌まわしき月曜日を破壊し、輝かしい週末を取り戻すのだ！">
-    <meta property="og:image" content="https://i.imgur.com/HgsoHdN.png">
+    <meta property="og:image" content="https://smash-monday.kagekin.com/img/monsmash.png">
     <meta name="twitter:card" content="summary_large_image">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -434,7 +434,7 @@
     </div>
 
     <div id="cutin-container" class="overlay">
-        <img id="cutin-img" src="https://i.imgur.com/HgsoHdN.png" onerror="this.style.display='none'" alt="破壊執行カットイン">
+        <img id="cutin-img" src="img/HgsoHdN.png" onerror="this.style.display='none'" alt="破壊執行カットイン">
     </div>
     <div id="glitch-overlay" class="overlay"></div>
 
@@ -459,12 +459,28 @@
         const container = document.querySelector('.container');
 
         let soundsReady = false;
-        let fanfare, destructionSFX;
+        let fanfare, destructionSFX, chargeSound, gameButtonClickSound;
 
         function setupSounds() {
             if (soundsReady) return;
             fanfare = () => { const synth = new Tone.PolySynth(Tone.Synth).toDestination(); synth.volume.value = -12; const now = Tone.now(); synth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now); synth.triggerAttackRelease(["G4", "B4", "D5"], "8n", now + 0.2); synth.triggerAttackRelease(["C5", "E5", "G5"], "4n", now + 0.4); };
             destructionSFX = () => { const now = Tone.now(); const noise = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 1.5, sustain: 0 } }).toDestination(); noise.triggerAttackRelease("1n", now); noise.volume.value = -10; const rumble = new Tone.MembraneSynth({ pitchDecay: 0.2, octaves: 2, envelope: { attack: 0.1, decay: 0.8, sustain: 0.1, release: 1 } }).toDestination(); rumble.triggerAttackRelease("C1", "1n", now); const shatter = new Tone.PluckSynth().toDestination(); shatter.volume.value = -5; const shatterTimes = []; for (let i = 0; i < 15; i++) { shatterTimes.push(Math.random() * 0.4); } shatterTimes.sort(); shatterTimes.forEach(timeOffset => { shatter.triggerAttack(Tone.Midi(Math.random() * 48 + 48).toFrequency(), now + timeOffset); }); };
+            
+            // ズーン！という重低音
+            chargeSound = new Tone.MonoSynth({
+                oscillator: { type: "fmsquare", modulationType: 'sawtooth', modulationIndex: 0.8 },
+                envelope: { attack: 0.1, decay: 0.1, sustain: 0.4, release: 0.8 },
+                filterEnvelope: { attack: 0.1, decay: 0.2, sustain: 0.3, release: 0.8, baseFrequency: 80, octaves: 2.5 }
+            }).toDestination();
+            chargeSound.volume.value = -8;
+            
+            // ピコーンというゲーム風の音
+            gameButtonClickSound = new Tone.Synth({
+                oscillator: { type: "triangle8" },
+                envelope: { attack: 0.001, decay: 0.3, sustain: 0.1, release: 0.5 }
+            }).toDestination();
+            gameButtonClickSound.volume.value = -15;
+
             soundsReady = true;
         }
 
@@ -485,13 +501,16 @@
 
         async function crushMonday() {
             if (!soundsReady) { await Tone.start(); setupSounds(); }
+            
+            chargeSound.triggerAttackRelease("D2", "0.5");
+
             crushButton.disabled = true;
-            gsap.to(crushButton, { autoAlpha: 0, duration: 0.3 });
+            gsap.to(crushButton, { autoAlpha: 0, duration: 0.3, delay: 0.2 });
             gsap.to([kagekinContainer, kagekinBubble], { autoAlpha: 0, duration: 0.3 });
 
             const pattern = getRandomItem(destructionPatterns);
             currentVictoryPhrase = getRandomItem(victoryPhrases);
-            const tl = gsap.timeline({ onComplete: showPostCrushUI });
+            const tl = gsap.timeline({ onComplete: showPostCrushUI, delay: 0.5 });
 
             tl.set(cutinImg, { scale: 3, autoAlpha: 0 }) 
               .to(cutinContainer, { autoAlpha: 1, duration: 0.1, onStart: () => cutinContainer.classList.add('visible') })
@@ -551,6 +570,7 @@
         }
         
         function resetApp() {
+            if (soundsReady) gameButtonClickSound.triggerAttackRelease("A5", "32n");
             body.classList.remove('happy-mode');
             postCrushControls.classList.remove('visible');
             
@@ -592,16 +612,33 @@
         crushButton.addEventListener('click', crushMonday);
         resetButton.addEventListener('click', resetApp);
         tweetButton.addEventListener('click', () => { 
+            if (soundsReady) gameButtonClickSound.triggerAttackRelease("C6", "32n");
             const tweetTitle = "【月曜日破壊🌕️アプリ】";
             const tweetBody = `「${currentVictoryPhrase}」💥🎉\n\nあなたも月曜日を破壊する権利があります。\n\n`;
-            const hashtags = "#月曜日破壊ナイザー #バーチャルひみつガジェット #Gemini";
-            const fullText = `${tweetTitle}\n${tweetBody}${hashtags}`;
+            const hashtags = "月曜日破壊ナイザー,バーチャルひみつガジェット,Gemini";
+            const appUrl = window.location.href;
+            const fullText = `${tweetTitle}\n${tweetBody}`;
+            
             const encodedText = encodeURIComponent(fullText);
-            window.open(`https://twitter.com/intent/tweet?text=${encodedText}`);
+            const encodedUrl = encodeURIComponent(appUrl);
+            
+            window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}&hashtags=${hashtags}`);
         });
-        gadgetInfo.addEventListener('click', () => { gadgetModal.classList.add('visible'); gsap.fromTo(gadgetModal, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }); });
-        modalCloseBtn.addEventListener('click', () => { gsap.to(gadgetModal, { autoAlpha: 0, duration: 0.3, onComplete: () => gadgetModal.classList.remove('visible') }); });
-        gadgetModal.addEventListener('click', (e) => { if (e.target === gadgetModal) { gsap.to(gadgetModal, { autoAlpha: 0, duration: 0.3, onComplete: () => gadgetModal.classList.remove('visible') }); } });
+        gadgetInfo.addEventListener('click', () => { 
+            if (soundsReady) gameButtonClickSound.triggerAttackRelease("G5", "16n");
+            gadgetModal.classList.add('visible'); 
+            gsap.fromTo(gadgetModal, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }); 
+        });
+        modalCloseBtn.addEventListener('click', () => { 
+            if (soundsReady) gameButtonClickSound.triggerAttackRelease("E5", "16n");
+            gsap.to(gadgetModal, { autoAlpha: 0, duration: 0.3, onComplete: () => gadgetModal.classList.remove('visible') }); 
+        });
+        gadgetModal.addEventListener('click', (e) => { 
+            if (e.target === gadgetModal) { 
+                if (soundsReady) gameButtonClickSound.triggerAttackRelease("E5", "16n");
+                gsap.to(gadgetModal, { autoAlpha: 0, duration: 0.3, onComplete: () => gadgetModal.classList.remove('visible') }); 
+            } 
+        });
         
         document.addEventListener('DOMContentLoaded', () => {
              const startAudio = async () => { await Tone.start(); setupSounds(); document.body.removeEventListener('click', startAudio); document.body.removeEventListener('touchend', startAudio); };
